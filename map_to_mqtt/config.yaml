@@ -1,6 +1,6 @@
 name: "MAP to MQTT"
 description: "Bridges Bosch MAP5000 REST-API events to MQTT and accepts MQTT commands to control areas, outputs and points."
-version: "1.0.0"
+version: "1.0.1"
 slug: "map_to_mqtt"
 init: false
 homeassistant_api: false
@@ -12,6 +12,9 @@ arch:
   - armhf
   - armv7
   - i386
+
+map:
+  - config:rw
 
 options:
   map_base_url: "https://169.254.10.10"
