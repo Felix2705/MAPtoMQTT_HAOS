@@ -83,10 +83,10 @@ class MqttDiscovery:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/points/{siid}"
 
-        # binary_sensor: aktiv / nicht aktiv
+        # binary_sensor: Eingeschaltet (aktiv / nicht aktiv)
         bs_uid = f"map_point_{slug}"
         self._mqtt.publish(self._base("binary_sensor", bs_uid), {
-            "name": name,
+            "name": f"{name} (Eingeschaltet)",
             "unique_id": bs_uid,
             "state_topic": state_topic,
             "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
@@ -95,10 +95,10 @@ class MqttDiscovery:
             "device": _device(),
         }, retain=True)
 
-        # switch: sperren / entsperren
+        # switch: Gesperrt (sperren / entsperren)
         sw_uid = f"map_point_{slug}_enabled"
         self._mqtt.publish(self._base("switch", sw_uid), {
-            "name": f"{name} (Aktiv)",
+            "name": f"{name} (Gesperrt)",
             "unique_id": sw_uid,
             "state_topic": f"{state_topic}/sperren",
             "value_template": "{{ 'ON' if value_json.value else 'OFF' }}",
