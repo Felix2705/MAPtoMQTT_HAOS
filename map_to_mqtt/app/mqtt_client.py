@@ -82,4 +82,7 @@ class MqttService:
             return
         payload = msg.payload.decode("utf-8", errors="ignore")
         logger.debug("MQTT message %s (%d bytes)", msg.topic, len(msg.payload))
-        self._on_command(msg.topic, payload)
+        try:
+            self._on_command(msg.topic, payload)
+        except Exception:
+            logger.exception("Error handling MQTT message: %s", msg.topic)

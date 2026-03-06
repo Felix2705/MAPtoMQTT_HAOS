@@ -127,6 +127,12 @@ class BridgeController:
     def _handle_command(self, topic: str, payload: str) -> None:
         if not self._map_client or not self._cmd_parser:
             return
+        try:
+            self._handle_command_safe(topic, payload)
+        except Exception:
+            logger.exception("Command execution failed: topic=%s payload=%s", topic, payload)
+
+    def _handle_command_safe(self, topic: str, payload: str) -> None:
         cmd = self._cmd_parser.parse(topic, payload)
         params = cmd.get("params") if isinstance(cmd.get("params"), dict) else {}
         if params.get("source") == "bridge":

@@ -4,7 +4,10 @@ import time
 from typing import Any, Dict, Optional
 
 import requests
+import urllib3
 from requests.auth import HTTPDigestAuth
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
