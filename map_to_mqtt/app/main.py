@@ -11,8 +11,11 @@ import signal
 import sys
 import threading
 import time
+import urllib3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 from .bridge import BridgeController
 from .discovery import MqttDiscovery
