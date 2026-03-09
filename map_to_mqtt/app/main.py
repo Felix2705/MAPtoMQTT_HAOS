@@ -121,7 +121,8 @@ class StatePusher:
             payload: Dict[str, Any] = item
             if category in {"points", "outputs"} and "enabled" in payload and "sperren" not in payload:
                 payload = dict(item)
-                payload["sperren"] = bool(payload.get("enabled"))
+                # enabled=True means "in Betrieb" (not locked), so sperren = not enabled
+                payload["sperren"] = not bool(payload.get("enabled"))
 
             base_topic = f"{state_base}/{category}/{siid}"
             self._publish_item(base_topic, payload)
@@ -192,7 +193,9 @@ def main() -> None:
 
     mqtt_svc = MqttService()
     discovery = MqttDiscovery(mqtt_svc, state_base, cmd_base)
+    # Two separate MapClient instances so event long-poll never blocks commands/state-refresh
     map_client = _build_map_client(opts)
+    event_map_client = _build_map_client(opts)
 
     mapper = MapEventMapper(event_base, translation_map)
     cmd_parser = CommandParser(cmd_base, translation_map, translation_name_map)
@@ -248,7 +251,7 @@ def main() -> None:
                 stop_event.wait(timeout=15)
                 continue
 
-            bridge.start_events(_build_sub_payload(), _build_fetch_payload(opts))
+            bridge.start_events(_build_sub_payload(), _build_fetch_payload(opts), map_client=event_map_client)
             state_pusher.start()
             started = True
             logger.info("Bridge running")

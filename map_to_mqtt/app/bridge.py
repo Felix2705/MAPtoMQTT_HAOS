@@ -101,14 +101,14 @@ class BridgeController:
         self._cmd_parser = cmd_parser
         self._mqtt.set_command_handler(self._handle_command)
 
-    def start_events(self, sub_payload: Dict[str, Any], fetch_payload: Dict[str, Any]) -> None:
+    def start_events(self, sub_payload: Dict[str, Any], fetch_payload: Dict[str, Any], map_client: Optional[MapClient] = None) -> None:
         if not self._map_client or not self._mqtt or not self._mapper:
             return
         if self._event_worker and self._event_worker._running:
             return
         logger.info("Starting event worker")
         self._event_worker = EventWorker(
-            self._map_client,
+            map_client if map_client is not None else self._map_client,
             self._mqtt,
             self._mapper,
             sub_payload,
@@ -192,10 +192,18 @@ class BridgeController:
             return
         resource = cmd.get("type")
         field = cmd.get("field")
-        if resource == "point" and field in {"enabled", "sperren"}:
+        if resource == "point" and field == "sperren":
+            # sperren=true (switch ON) → DISABLE (Melder Gesperrt/bypassed)
+            self._map_client.post_point_command(cmd["siid"], {"@cmd": "DISABLE" if flag else "ENABLE"})
+            logger.info("Point sperren set to %s: %s", flag, cmd["siid"])
+        elif resource == "point" and field == "enabled":
             self._map_client.post_point_command(cmd["siid"], {"@cmd": "ENABLE" if flag else "DISABLE"})
             logger.info("Point enabled set to %s: %s", flag, cmd["siid"])
-        elif resource == "output" and field in {"enabled", "sperren"}:
+        elif resource == "output" and field == "sperren":
+            # sperren=true (switch ON) → DISABLE (Ausgang Gesperrt)
+            self._map_client.post_output_command(cmd["siid"], {"@cmd": "DISABLE" if flag else "ENABLE"})
+            logger.info("Output sperren set to %s: %s", flag, cmd["siid"])
+        elif resource == "output" and field == "enabled":
             self._map_client.post_output_command(cmd["siid"], {"@cmd": "ENABLE" if flag else "DISABLE"})
             logger.info("Output enabled set to %s: %s", flag, cmd["siid"])
         elif resource == "output" and field == "on":
