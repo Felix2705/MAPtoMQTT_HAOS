@@ -4,8 +4,6 @@ from typing import Callable, Optional
 
 import paho.mqtt.client as mqtt
 
-from .discovery import AVAILABILITY_TOPIC
-
 logger = logging.getLogger(__name__)
 
 
@@ -22,14 +20,23 @@ class MqttService:
     def set_command_handler(self, handler: Callable[[str, str], None]) -> None:
         self._on_command = handler
 
-    def connect(self, host: str, port: int, username: str, password: str, use_tls: bool) -> None:
-        self._client = mqtt.Client()
+    def connect(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+        use_tls: bool,
+        availability_topic: str = "map/bridge/availability",
+    ) -> None:
+        # paho-mqtt 2.x requires explicit CallbackAPIVersion
+        self._client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
         if username or password:
             self._client.username_pw_set(username, password)
         if use_tls:
             self._client.tls_set()
-        # Last Will: HA markiert alle Entities als "unavailable" wenn der Addon abstürzt
-        self._client.will_set(AVAILABILITY_TOPIC, "offline", qos=1, retain=True)
+        # Last Will: HA marks all entities as "unavailable" when the addon crashes
+        self._client.will_set(availability_topic, "offline", qos=1, retain=True)
         logger.debug("MQTT connecting to %s:%s tls=%s", host, port, use_tls)
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect

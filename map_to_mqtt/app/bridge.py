@@ -43,6 +43,14 @@ class EventWorker:
             self._thread.join(timeout=5)
             self._thread = None
 
+    @property
+    def alive(self) -> bool:
+        return (
+            self._running
+            and self._thread is not None
+            and self._thread.is_alive()
+        )
+
     def _run(self) -> None:
         try:
             self._emit_status("connecting")
@@ -93,6 +101,10 @@ class BridgeController:
         self._mqtt: Optional[MqttService] = None
         self._mapper: Optional[MapEventMapper] = None
         self._cmd_parser: Optional[CommandParser] = None
+        # Stored for auto-restart
+        self._sub_payload: Optional[Dict[str, Any]] = None
+        self._fetch_payload: Optional[Dict[str, Any]] = None
+        self._event_map_client: Optional[MapClient] = None
 
     def setup(self, map_client: MapClient, mqtt: MqttService, mapper: MapEventMapper, cmd_parser: CommandParser) -> None:
         self._map_client = map_client
@@ -104,11 +116,15 @@ class BridgeController:
     def start_events(self, sub_payload: Dict[str, Any], fetch_payload: Dict[str, Any], map_client: Optional[MapClient] = None) -> None:
         if not self._map_client or not self._mqtt or not self._mapper:
             return
-        if self._event_worker and self._event_worker._running:
+        if self._event_worker and self._event_worker.alive:
             return
+        # Store for potential restart
+        self._sub_payload = sub_payload
+        self._fetch_payload = fetch_payload
+        self._event_map_client = map_client if map_client is not None else self._map_client
         logger.info("Starting event worker")
         self._event_worker = EventWorker(
-            map_client if map_client is not None else self._map_client,
+            self._event_map_client,
             self._mqtt,
             self._mapper,
             sub_payload,
@@ -123,6 +139,22 @@ class BridgeController:
             logger.info("Stopping event worker")
             self._event_worker.stop()
             self._event_worker = None
+
+    @property
+    def event_worker_alive(self) -> bool:
+        return self._event_worker is not None and self._event_worker.alive
+
+    def restart_events_if_dead(self) -> bool:
+        """Restart the EventWorker if it has stopped unexpectedly. Returns True if restarted."""
+        if self.event_worker_alive:
+            return False
+        if self._sub_payload is None or self._fetch_payload is None:
+            return False
+        logger.warning("EventWorker stopped unexpectedly – restarting in 10s")
+        time.sleep(10)
+        self._event_worker = None
+        self.start_events(self._sub_payload, self._fetch_payload, map_client=self._event_map_client)
+        return True
 
     def _handle_command(self, topic: str, payload: str) -> None:
         if not self._map_client or not self._cmd_parser:

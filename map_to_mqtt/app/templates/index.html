@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAP5000 Dashboard</title>
+  <style>
+    :root {
+      --bg:        #12121e;
+      --bg2:       #1e1e30;
+      --bg3:       #2a2a40;
+      --border:    #333350;
+      --text:      #e0e0ef;
+      --text-dim:  #7070a0;
+      --accent:    #7986cb;
+      --green:     #43a047;
+      --green-dim: #1b5e20;
+      --red:       #e53935;
+      --red-dim:   #7f0000;
+      --orange:    #fb8c00;
+      --orange-dim:#4e2700;
+      --blue:      #1e88e5;
+      --blue-dim:  #0d3a6b;
+      --grey:      #546e7a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    header h1 { font-size: 1.35rem; color: var(--accent); letter-spacing: 0.03em; }
+    #status-bar {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    #refresh-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.78rem;
+    }
+    #refresh-btn:hover { background: var(--bg2); }
+
+    section { margin-bottom: 2rem; }
+    section h2 {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Areas grid */
+    .areas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0.75rem;
+    }
+    .area-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+    }
+    .area-card .area-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.4rem; }
+    .area-card .area-siid { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.6rem; }
+    .area-card .area-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; background: var(--bg2); }
+    thead th {
+      background: var(--bg3);
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+    tbody tr { border-top: 1px solid var(--border); }
+    tbody tr:hover { background: var(--bg3); }
+    td { padding: 0.5rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
+    .item-name { font-weight: 500; }
+    .item-siid { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
+
+    /* Filter */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-header h2 { border: none; margin: 0; padding: 0; }
+    .filter-input {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      width: 180px;
+    }
+    .filter-input::placeholder { color: var(--text-dim); }
+    .filter-input:focus { outline: 1px solid var(--accent); }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .badge-armed    { background: var(--red-dim);    color: #ff8a80; border: 1px solid var(--red); }
+    .badge-disarmed { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
+    .badge-frei     { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
+    .badge-ausgeloest { background: var(--red-dim);  color: #ff8a80; border: 1px solid var(--red); }
+    .badge-gesperrt { background: var(--orange-dim); color: #ffd180; border: 1px solid var(--orange); }
+    .badge-on       { background: var(--blue-dim);   color: #82b1ff; border: 1px solid var(--blue); }
+    .badge-off      { background: #1a1a2e;           color: var(--text-dim); border: 1px solid var(--border); }
+
+    /* Buttons */
+    button.btn {
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 4px 11px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    button.btn:hover { opacity: 0.85; }
+    button.btn:active { opacity: 0.7; }
+    .btn-arm     { background: var(--red);    color: #fff; }
+    .btn-disarm  { background: var(--green);  color: #fff; }
+    .btn-sperren    { background: var(--orange); color: #fff; }
+    .btn-entsperren { background: var(--blue);   color: #fff; }
+    .btn-on  { background: var(--blue);  color: #fff; }
+    .btn-off { background: var(--grey);  color: #fff; }
+    .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+
+    /* Loading / error states */
+    .loading { color: var(--text-dim); font-style: italic; font-size: 0.85rem; padding: 0.75rem 0; }
+    .error-msg { color: #ff8a80; font-size: 0.85rem; padding: 0.5rem; }
+    .empty { color: var(--text-dim); font-size: 0.85rem; padding: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#x1F6E1; MAP5000 Dashboard</h1>
+  <div id="status-bar">
+    <span id="last-update">Lade…</span>
+    <button id="refresh-btn" onclick="loadStatus()">&#x21bb; Aktualisieren</button>
+  </div>
+</header>
+
+<!-- BEREICHE -->
+<section id="sec-areas">
+  <h2>Bereiche</h2>
+  <div id="areas-grid" class="areas-grid">
+    <div class="loading">Lade…</div>
+  </div>
+</section>
+
+<!-- MELDER -->
+<section id="sec-points">
+  <div class="section-header">
+    <h2 style="font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim)">Melder</h2>
+    <input class="filter-input" id="filter-points" placeholder="Suche…" oninput="filterTable('points-body', this.value)">
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name / SIID</th>
+          <th>Status</th>
+          <th>Aktiv</th>
+          <th>Gesperrt</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody id="points-body">
+        <tr><td colspan="5" class="loading">Lade…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- AUSGÄNGE -->
+<section id="sec-outputs">
+  <div class="section-header">
+    <h2 style="font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim)">Ausgänge</h2>
+    <input class="filter-input" id="filter-outputs" placeholder="Suche…" oninput="filterTable('outputs-body', this.value)">
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name / SIID</th>
+          <th>Ein/Aus</th>
+          <th>Gesperrt</th>
+          <th>Aktionen</th>
+        </tr>
+      </thead>
+      <tbody id="outputs-body">
+        <tr><td colspan="4" class="loading">Lade…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  const REFRESH_MS = 10000;
+  let refreshTimer = null;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function siid(item) {
+    return (item["@self"] || "").replace(/^\//, "");
+  }
+  function label(item) {
+    return item.name || siid(item) || "—";
+  }
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function escAttr(s) {
+    return esc(s).replace(/'/g, "&#39;");
+  }
+
+  // ── Commands ─────────────────────────────────────────────────────────────────
+  async function sendCmd(resource, itemSiid, cmd) {
+    try {
+      const r = await fetch("api/cmd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resource, siid: itemSiid, cmd }),
+      });
+      const j = await r.json();
+      if (!j.ok) {
+        alert("Fehler: " + (j.error || "Unbekannter Fehler"));
+      } else {
+        scheduleRefresh(1200);
+      }
+    } catch (e) {
+      alert("Netzwerkfehler: " + e);
+    }
+  }
+
+  // ── Filter ────────────────────────────────────────────────────────────────────
+  function filterTable(tbodyId, query) {
+    const q = query.toLowerCase().trim();
+    const rows = document.getElementById(tbodyId).querySelectorAll("tr[data-search]");
+    rows.forEach(row => {
+      const match = !q || row.dataset.search.includes(q);
+      row.style.display = match ? "" : "none";
+    });
+  }
+
+  // ── Render Areas ──────────────────────────────────────────────────────────────
+  function renderAreas(areas) {
+    const grid = document.getElementById("areas-grid");
+    if (!areas.length) {
+      grid.innerHTML = '<div class="empty">Keine Bereiche gefunden.</div>';
+      return;
+    }
+    grid.innerHTML = areas.map(a => {
+      const s = siid(a);
+      const armed = a.armed === true;
+      const badge = armed
+        ? '<span class="badge badge-armed">&#x1F534; Scharf</span>'
+        : '<span class="badge badge-disarmed">&#x1F7E2; Unscharf</span>';
+      const btnArm    = `<button class="btn btn-arm"    onclick="sendCmd('area','${escAttr(s)}','ARM')">Scharf</button>`;
+      const btnDisarm = `<button class="btn btn-disarm" onclick="sendCmd('area','${escAttr(s)}','DISARM')">Unscharf</button>`;
+      return `
+        <div class="area-card">
+          <div class="area-name">${esc(label(a))}</div>
+          <div class="area-siid">${esc(s)}</div>
+          ${badge}
+          <div class="area-actions" style="margin-top:0.6rem">${btnArm}${btnDisarm}</div>
+        </div>`;
+    }).join("");
+  }
+
+  // ── Render Points ─────────────────────────────────────────────────────────────
+  function renderPoints(points) {
+    const tbody = document.getElementById("points-body");
+    if (!points.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">Keine Melder gefunden.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = points.map(p => {
+      const s   = siid(p);
+      const lbl = p.status_label || "—";
+      const active  = p.active === true;
+      const sperren = p.sperren === true || p.enabled === false;
+
+      let badgeClass = "badge-frei";
+      let badgeIcon  = "&#x1F7E2;";
+      if (lbl === "Ausgelöst") { badgeClass = "badge-ausgeloest"; badgeIcon = "&#x1F534;"; }
+      if (lbl === "Gesperrt")  { badgeClass = "badge-gesperrt";   badgeIcon = "&#x1F7E0;"; }
+
+      const statusBadge  = `<span class="badge ${badgeClass}">${badgeIcon} ${esc(lbl)}</span>`;
+      const activeBadge  = active
+        ? '<span class="badge badge-ausgeloest">Ausgelöst</span>'
+        : '<span class="badge badge-off">Ruhend</span>';
+      const sperrenBadge = sperren
+        ? '<span class="badge badge-gesperrt">Gesperrt</span>'
+        : '<span class="badge badge-frei">Aktiv</span>';
+
+      const btnSperren = sperren
+        ? `<button class="btn btn-entsperren" onclick="sendCmd('point','${escAttr(s)}','ENABLE')">Entsperren</button>`
+        : `<button class="btn btn-sperren"    onclick="sendCmd('point','${escAttr(s)}','DISABLE')">Sperren</button>`;
+
+      const searchKey = `${label(p)} ${s} ${lbl}`.toLowerCase();
+      return `
+        <tr data-search="${escAttr(searchKey)}">
+          <td><div class="item-name">${esc(label(p))}</div><div class="item-siid">${esc(s)}</div></td>
+          <td>${statusBadge}</td>
+          <td>${activeBadge}</td>
+          <td>${sperrenBadge}</td>
+          <td><div class="btn-group">${btnSperren}</div></td>
+        </tr>`;
+    }).join("");
+  }
+
+  // ── Render Outputs ────────────────────────────────────────────────────────────
+  function renderOutputs(outputs) {
+    const tbody = document.getElementById("outputs-body");
+    if (!outputs.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">Keine Ausgänge gefunden.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = outputs.map(o => {
+      const s       = siid(o);
+      const isOn    = o.on === true;
+      const sperren = o.sperren === true || o.enabled === false;
+
+      const onBadge = isOn
+        ? '<span class="badge badge-on">&#x26A1; EIN</span>'
+        : '<span class="badge badge-off">AUS</span>';
+      const spBadge = sperren
+        ? '<span class="badge badge-gesperrt">Gesperrt</span>'
+        : '<span class="badge badge-frei">Aktiv</span>';
+
+      const btnOn  = `<button class="btn btn-on"  onclick="sendCmd('output','${escAttr(s)}','ON')">EIN</button>`;
+      const btnOff = `<button class="btn btn-off" onclick="sendCmd('output','${escAttr(s)}','OFF')">AUS</button>`;
+      const btnSp  = sperren
+        ? `<button class="btn btn-entsperren" onclick="sendCmd('output','${escAttr(s)}','ENABLE')">Entsperren</button>`
+        : `<button class="btn btn-sperren"    onclick="sendCmd('output','${escAttr(s)}','DISABLE')">Sperren</button>`;
+
+      const searchKey = `${label(o)} ${s}`.toLowerCase();
+      return `
+        <tr data-search="${escAttr(searchKey)}">
+          <td><div class="item-name">${esc(label(o))}</div><div class="item-siid">${esc(s)}</div></td>
+          <td>${onBadge} <div class="btn-group" style="margin-top:4px">${btnOn}${btnOff}</div></td>
+          <td>${spBadge}</td>
+          <td><div class="btn-group">${btnSp}</div></td>
+        </tr>`;
+    }).join("");
+
+    // Re-apply active filter after re-render
+    const q = document.getElementById("filter-outputs").value;
+    if (q) filterTable("outputs-body", q);
+  }
+
+  // ── Load Status ───────────────────────────────────────────────────────────────
+  async function loadStatus() {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    document.getElementById("last-update").textContent = "Aktualisiere…";
+    try {
+      const r = await fetch("api/status");
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const d = await r.json();
+
+      renderAreas(d.areas   || []);
+      renderPoints(d.points  || []);
+      renderOutputs(d.outputs || []);
+
+      document.getElementById("last-update").textContent =
+        "Aktualisiert: " + new Date().toLocaleTimeString("de-DE");
+
+      // Re-apply point filter after render
+      const qp = document.getElementById("filter-points").value;
+      if (qp) filterTable("points-body", qp);
+    } catch (e) {
+      document.getElementById("last-update").innerHTML =
+        `<span style="color:#ff8a80">Fehler: ${esc(String(e))}</span>`;
+    }
+    refreshTimer = setTimeout(loadStatus, REFRESH_MS);
+  }
+
+  function scheduleRefresh(delay) {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(loadStatus, delay);
+  }
+
+  // Initial load
+  loadStatus();
+</script>
+</body>
+</html>

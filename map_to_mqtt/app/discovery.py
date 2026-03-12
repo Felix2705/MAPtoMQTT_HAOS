@@ -7,7 +7,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-AVAILABILITY_TOPIC = "map/bridge/availability"
 _MANUFACTURER = "Bosch"
 _MODEL = "MAP5000"
 _PANEL_ID = "map5000_panel"
@@ -28,14 +27,30 @@ def _slug(siid: str) -> str:
 
 
 class MqttDiscovery:
-    def __init__(self, mqtt, state_base: str, cmd_base: str, discovery_prefix: str = "homeassistant") -> None:
+    def __init__(
+        self,
+        mqtt,
+        state_base: str,
+        cmd_base: str,
+        discovery_prefix: str = "homeassistant",
+        availability_topic: str = "",
+    ) -> None:
         self._mqtt = mqtt
         self._state_base = state_base.strip("/")
         self._cmd_base = cmd_base.strip("/")
         self._prefix = discovery_prefix.strip("/")
+        # Derive from state_base if not explicitly provided
+        if availability_topic:
+            self._availability_topic = availability_topic
+        else:
+            self._availability_topic = f"{self._state_base}/bridge/availability"
+
+    @property
+    def availability_topic(self) -> str:
+        return self._availability_topic
 
     def publish_availability(self, online: bool) -> None:
-        self._mqtt.publish_raw(AVAILABILITY_TOPIC, "online" if online else "offline", retain=True)
+        self._mqtt.publish_raw(self._availability_topic, "online" if online else "offline", retain=True)
 
     def publish_all(self, areas: list, points: list, outputs: list) -> None:
         for item in areas:
@@ -74,7 +89,7 @@ class MqttDiscovery:
             "payload_arm_home": "true",
             "payload_arm_night": "true",
             "payload_disarm": "false",
-            "availability_topic": AVAILABILITY_TOPIC,
+            "availability_topic": self._availability_topic,
             "device": _device(),
         }
         self._mqtt.publish(self._base("alarm_control_panel", uid), config, retain=True)
@@ -83,7 +98,7 @@ class MqttDiscovery:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/points/{siid}"
 
-        # binary_sensor: Eingeschaltet (aktiv / nicht aktiv)
+        # binary_sensor: aktiv / nicht aktiv (Ausgelöst/Frei)
         bs_uid = f"map_point_{slug}"
         self._mqtt.publish(self._base("binary_sensor", bs_uid), {
             "name": f"{name} (Eingeschaltet)",
@@ -91,7 +106,19 @@ class MqttDiscovery:
             "state_topic": state_topic,
             "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
             "device_class": "motion",
-            "availability_topic": AVAILABILITY_TOPIC,
+            "availability_topic": self._availability_topic,
+            "device": _device(),
+        }, retain=True)
+
+        # sensor: Status-Label (Frei / Ausgelöst / Gesperrt)
+        lbl_uid = f"map_point_{slug}_status_label"
+        self._mqtt.publish(self._base("sensor", lbl_uid), {
+            "name": f"{name} (Status)",
+            "unique_id": lbl_uid,
+            "state_topic": f"{state_topic}/status_label",
+            "value_template": "{{ value_json.value }}",
+            "icon": "mdi:shield-check",
+            "availability_topic": self._availability_topic,
             "device": _device(),
         }, retain=True)
 
@@ -105,7 +132,7 @@ class MqttDiscovery:
             "command_topic": f"{self._cmd_base}/point/{siid}/sperren",
             "payload_on": "true",
             "payload_off": "false",
-            "availability_topic": AVAILABILITY_TOPIC,
+            "availability_topic": self._availability_topic,
             "device": _device(),
         }, retain=True)
 
@@ -123,7 +150,7 @@ class MqttDiscovery:
             "command_topic": f"{self._cmd_base}/output/{siid}/on",
             "payload_on": "true",
             "payload_off": "false",
-            "availability_topic": AVAILABILITY_TOPIC,
+            "availability_topic": self._availability_topic,
             "device": _device(),
         }, retain=True)
 
@@ -137,6 +164,6 @@ class MqttDiscovery:
             "command_topic": f"{self._cmd_base}/output/{siid}/sperren",
             "payload_on": "true",
             "payload_off": "false",
-            "availability_topic": AVAILABILITY_TOPIC,
+            "availability_topic": self._availability_topic,
             "device": _device(),
         }, retain=True)

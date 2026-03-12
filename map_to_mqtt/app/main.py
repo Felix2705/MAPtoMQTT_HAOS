@@ -23,6 +23,7 @@ from .map_client import MapClient
 from .mapping import CommandParser, MapEventMapper
 from .mqtt_client import MqttService
 from .translation import load_translation_map, normalize_siid, topicize_name
+from .web_ui import start_web_ui
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,6 +51,23 @@ def _enrich(items: list, translation_map: dict) -> list:
             item["name"] = entry.get("name", "")
         result.append(item)
     return result
+
+
+def _compute_status_label(item: dict) -> str:
+    """Compute German status label for a point from its fields."""
+    op = str(item.get("opState", "")).upper()
+    if op in {"ALARM", "ACTIVE", "OPEN", "1"}:
+        return "Ausgelöst"
+    if op in {"BYPASSED", "DISABLED", "2"}:
+        return "Gesperrt"
+    if op in {"NORMAL", "CLEAN", "CLOSED", "0"}:
+        return "Frei"
+    # Derive from active/enabled when opState is absent or unknown
+    if not item.get("enabled", True):
+        return "Gesperrt"
+    if item.get("active", False):
+        return "Ausgelöst"
+    return "Frei"
 
 
 class StatePusher:
@@ -119,10 +137,15 @@ class StatePusher:
                 continue
 
             payload: Dict[str, Any] = item
+
             if category in {"points", "outputs"} and "enabled" in payload and "sperren" not in payload:
                 payload = dict(item)
                 # enabled=True means "in Betrieb" (not locked), so sperren = not enabled
                 payload["sperren"] = not bool(payload.get("enabled"))
+
+            if category == "points":
+                payload = dict(payload)
+                payload["status_label"] = _compute_status_label(payload)
 
             base_topic = f"{state_base}/{category}/{siid}"
             self._publish_item(base_topic, payload)
@@ -175,7 +198,7 @@ def main() -> None:
     logger.info("Options: map=%s  mqtt=%s:%s",
                 opts.get("map_base_url"), opts.get("mqtt_host"), opts.get("mqtt_port"))
 
-    # Optionale Übersetzungstabelle (SIID → Name)
+    # Optional translation table (SIID → Name)
     translation_map: dict = {}
     translation_name_map: dict = {}
     xml_path = opts.get("translation_xml_path", "").strip()
@@ -187,13 +210,17 @@ def main() -> None:
                 translation_name_map[name_seg] = normalize_siid(siid)
         logger.info("Translation loaded: %d entries from %s", len(translation_map), xml_path)
 
-    state_base = opts.get("state_topic_base", "map/state")
+    state_base = opts.get("state_topic_base", "map/state").strip("/")
     cmd_base = opts.get("cmd_topic_base", "map/cmd").strip("/")
     event_base = opts.get("event_topic_base", "map/events")
 
+    # Availability topic derived from state_base (no more hardcoded path)
+    availability_topic = f"{state_base}/bridge/availability"
+
     mqtt_svc = MqttService()
-    discovery = MqttDiscovery(mqtt_svc, state_base, cmd_base)
-    # Two separate MapClient instances so event long-poll never blocks commands/state-refresh
+    discovery = MqttDiscovery(mqtt_svc, state_base, cmd_base, availability_topic=availability_topic)
+
+    # Two separate MapClient instances: event long-poll never blocks commands/state-refresh
     map_client = _build_map_client(opts)
     event_map_client = _build_map_client(opts)
 
@@ -203,6 +230,10 @@ def main() -> None:
     bridge.setup(map_client, mqtt_svc, mapper, cmd_parser)
 
     state_pusher = StatePusher(map_client, mqtt_svc, discovery, opts, translation_map)
+
+    # Start Web UI (HA Ingress on port 8080) — uses its own MapClient internally
+    # We pass the same map_client; Web UI calls are user-triggered, not concurrent with long-poll
+    start_web_ui(map_client, translation_map, port=8080)
 
     stop_event = threading.Event()
 
@@ -226,6 +257,7 @@ def main() -> None:
                     username=opts.get("mqtt_username", ""),
                     password=opts.get("mqtt_password", ""),
                     use_tls=bool(opts.get("mqtt_use_tls", False)),
+                    availability_topic=availability_topic,
                 )
                 time.sleep(1)
                 mqtt_svc.subscribe(f"{cmd_base}/area/#")
@@ -257,6 +289,12 @@ def main() -> None:
             logger.info("Bridge running")
 
         stop_event.wait(timeout=5)
+
+        if started and mqtt_svc.connected:
+            # Auto-restart EventWorker if it died unexpectedly
+            if not bridge.event_worker_alive:
+                logger.warning("EventWorker not alive, attempting restart …")
+                bridge.restart_events_if_dead()
 
         if started and not mqtt_svc.connected:
             logger.warning("MQTT connection lost, reconnecting …")
