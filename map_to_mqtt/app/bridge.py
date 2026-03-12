@@ -20,6 +20,7 @@ class EventWorker:
         fetch_payload: Dict[str, Any],
         on_status: Optional[Callable[[str], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
+        on_events: Optional[Callable[[], None]] = None,
     ):
         self._map = map_client
         self._mqtt = mqtt
@@ -28,6 +29,7 @@ class EventWorker:
         self._fetch_payload = fetch_payload
         self._on_status = on_status
         self._on_error = on_error
+        self._on_events = on_events   # called whenever ≥1 event arrived
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._subscription_url: Optional[str] = None
@@ -55,7 +57,6 @@ class EventWorker:
         try:
             self._emit_status("connecting")
             logger.info("Creating MAP subscription")
-            logger.debug("Subscribe payload: %s", self._sub_payload)
             sub = self._map.create_subscription(self._sub_payload)
             self._subscription_url = sub.get("subscriptionURL")
             if not self._subscription_url:
@@ -72,6 +73,12 @@ class EventWorker:
                 for evt in evt_list:
                     topic, payload = self._mapper.map_event(evt)
                     self._mqtt.publish(topic, payload)
+                # Trigger immediate state refresh when events arrive
+                if evt_list and self._on_events:
+                    try:
+                        self._on_events()
+                    except Exception:
+                        logger.exception("on_events callback error")
                 time.sleep(0.1)
         except Exception as exc:
             logger.exception("Event worker error")
@@ -105,6 +112,8 @@ class BridgeController:
         self._sub_payload: Optional[Dict[str, Any]] = None
         self._fetch_payload: Optional[Dict[str, Any]] = None
         self._event_map_client: Optional[MapClient] = None
+        # Callback to trigger immediate state refresh (StatePusher.trigger_refresh)
+        self._on_state_change: Optional[Callable[[], None]] = None
 
     def setup(self, map_client: MapClient, mqtt: MqttService, mapper: MapEventMapper, cmd_parser: CommandParser) -> None:
         self._map_client = map_client
@@ -113,12 +122,15 @@ class BridgeController:
         self._cmd_parser = cmd_parser
         self._mqtt.set_command_handler(self._handle_command)
 
+    def set_on_state_change(self, callback: Callable[[], None]) -> None:
+        """Register callback that is called after events arrive or a command is sent."""
+        self._on_state_change = callback
+
     def start_events(self, sub_payload: Dict[str, Any], fetch_payload: Dict[str, Any], map_client: Optional[MapClient] = None) -> None:
         if not self._map_client or not self._mqtt or not self._mapper:
             return
         if self._event_worker and self._event_worker.alive:
             return
-        # Store for potential restart
         self._sub_payload = sub_payload
         self._fetch_payload = fetch_payload
         self._event_map_client = map_client if map_client is not None else self._map_client
@@ -131,6 +143,7 @@ class BridgeController:
             fetch_payload,
             on_status=lambda s: logger.info("MAP status: %s", s),
             on_error=lambda e: logger.error("MAP error: %s", e),
+            on_events=self._on_state_change,
         )
         self._event_worker.start()
 
@@ -172,18 +185,30 @@ class BridgeController:
         logger.info("Command received: %s", cmd)
         if cmd.get("field"):
             self._execute_field_command(cmd)
-            return
-        if cmd.get("type") == "area":
+        elif cmd.get("type") == "area":
             self._execute_area(cmd)
         elif cmd.get("type") == "output":
             self._execute_output(cmd)
         elif cmd.get("type") == "point":
             self._execute_point(cmd)
+        # After any command → trigger state refresh so MQTT topics update immediately
+        self._trigger_state_refresh()
+
+    def _trigger_state_refresh(self) -> None:
+        if self._on_state_change:
+            try:
+                self._on_state_change()
+            except Exception:
+                logger.exception("on_state_change callback error")
 
     def _execute_area(self, cmd: Dict[str, Any]) -> None:
         allowed = {
-            "ARM", "DISARM", "STARTWALKTEST", "STOPWALKTEST",
-            "STARTMDTEST", "STOPMDTEST", "STARTCHIMEMODE", "STOPCHIMEMODE", "BELLTEST",
+            "ARM", "DISARM",
+            "RESET", "SILENCEALARM",
+            "STARTWALKTEST", "STOPWALKTEST",
+            "STARTMDTEST", "STOPMDTEST",
+            "STARTCHIMEMODE", "STOPCHIMEMODE",
+            "BELLTEST",
         }
         cmd_name = cmd.get("cmd", "")
         if cmd_name not in allowed:
@@ -225,14 +250,12 @@ class BridgeController:
         resource = cmd.get("type")
         field = cmd.get("field")
         if resource == "point" and field == "sperren":
-            # sperren=true (switch ON) → DISABLE (Melder Gesperrt/bypassed)
             self._map_client.post_point_command(cmd["siid"], {"@cmd": "DISABLE" if flag else "ENABLE"})
             logger.info("Point sperren set to %s: %s", flag, cmd["siid"])
         elif resource == "point" and field == "enabled":
             self._map_client.post_point_command(cmd["siid"], {"@cmd": "ENABLE" if flag else "DISABLE"})
             logger.info("Point enabled set to %s: %s", flag, cmd["siid"])
         elif resource == "output" and field == "sperren":
-            # sperren=true (switch ON) → DISABLE (Ausgang Gesperrt)
             self._map_client.post_output_command(cmd["siid"], {"@cmd": "DISABLE" if flag else "ENABLE"})
             logger.info("Output sperren set to %s: %s", flag, cmd["siid"])
         elif resource == "output" and field == "enabled":

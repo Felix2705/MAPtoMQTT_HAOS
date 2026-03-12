@@ -10,10 +10,39 @@ from typing import Optional
 
 from flask import Flask, jsonify, render_template, request
 
+from .translation import normalize_siid
+
 logger = logging.getLogger(__name__)
 
 _map_client = None
 _translation_map: dict = {}
+_map_online: bool = True
+_refresh_callback = None
+
+
+def set_map_online(online: bool) -> None:
+    """Called by the health monitor to keep the web UI status in sync."""
+    global _map_online
+    _map_online = online
+
+
+def set_refresh_callback(callback) -> None:
+    """Register a callback that triggers MQTT state refresh after web UI commands."""
+    global _refresh_callback
+    _refresh_callback = callback
+
+
+def _enrich(items: list, translation_map: dict) -> list:
+    """Add 'name' field from translation map to each item if not already present."""
+    result = []
+    for item in items:
+        siid = normalize_siid(str(item.get("@self", "")).lstrip("/"))
+        entry = translation_map.get(siid)
+        if entry and "name" not in item:
+            item = dict(item)
+            item["name"] = entry.get("name", "")
+        result.append(item)
+    return result
 
 
 def _compute_status_label(point: dict) -> str:
@@ -25,7 +54,6 @@ def _compute_status_label(point: dict) -> str:
         return "Gesperrt"
     if op in {"NORMAL", "CLEAN", "CLOSED", "0"}:
         return "Frei"
-    # Derive from active/enabled when opState is absent or unknown
     if not point.get("enabled", True):
         return "Gesperrt"
     if point.get("active", False):
@@ -46,16 +74,16 @@ def create_app(map_client, translation_map: dict) -> Flask:
 
     @app.route("/api/status")
     def api_status():
+        global _map_online
         if _map_client is None:
-            return jsonify({"error": "MAP client not initialized"}), 503
+            return jsonify({"error": "MAP client not initialized", "map_online": False}), 503
         try:
-            areas = list(_map_client.get_areas().get("list", []))
-            points = list(_map_client.get_points().get("list", []))
-            outputs = list(_map_client.get_outputs().get("list", []))
+            areas   = _enrich(list(_map_client.get_areas().get("list", [])),   _translation_map)
+            points  = _enrich(list(_map_client.get_points().get("list", [])),  _translation_map)
+            outputs = _enrich(list(_map_client.get_outputs().get("list", [])), _translation_map)
 
             for p in points:
                 p["status_label"] = _compute_status_label(p)
-                # Derive sperren field for consistency with MQTT state
                 if "sperren" not in p:
                     p["sperren"] = not bool(p.get("enabled", True))
 
@@ -63,10 +91,17 @@ def create_app(map_client, translation_map: dict) -> Flask:
                 if "sperren" not in o:
                     o["sperren"] = not bool(o.get("enabled", True))
 
-            return jsonify({"areas": areas, "points": points, "outputs": outputs})
+            _map_online = True
+            return jsonify({
+                "map_online": True,
+                "areas": areas,
+                "points": points,
+                "outputs": outputs,
+            })
         except Exception as exc:
             logger.exception("api_status error")
-            return jsonify({"error": str(exc)}), 500
+            _map_online = False
+            return jsonify({"map_online": False, "error": str(exc)}), 500
 
     @app.route("/api/cmd", methods=["POST"])
     def api_cmd():
@@ -91,6 +126,12 @@ def create_app(map_client, translation_map: dict) -> Flask:
             else:
                 return jsonify({"error": f"unknown resource: {resource}"}), 400
             logger.info("Web UI command: %s %s %s", resource, siid, cmd)
+            # Trigger MQTT state refresh so MQTT topics update immediately after web UI commands
+            if _refresh_callback:
+                try:
+                    _refresh_callback()
+                except Exception:
+                    logger.exception("refresh_callback error")
             return jsonify({"ok": True, "cmd": cmd, "siid": siid})
         except Exception as exc:
             logger.exception("api_cmd error: %s %s %s", resource, siid, cmd)

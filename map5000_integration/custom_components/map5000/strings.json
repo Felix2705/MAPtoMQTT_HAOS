@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MAP5000 einrichten",
+        "description": "Gib die URL des MAP to MQTT Addons ein.\nStandard wenn das Addon auf demselben HA läuft: {default_url}",
+        "data": {
+          "base_url": "Addon URL"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum MAP to MQTT Addon fehlgeschlagen. Prüfe URL und ob das Addon läuft."
+    },
+    "abort": {
+      "already_configured": "MAP5000 ist bereits eingerichtet."
+    }
+  }
+}

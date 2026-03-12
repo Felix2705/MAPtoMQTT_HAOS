@@ -31,21 +31,51 @@
       min-height: 100vh;
       padding: 1rem;
     }
+
+    /* ── Header ───────────────────────────────────── */
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
       margin-bottom: 1.25rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border);
     }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
     header h1 { font-size: 1.35rem; color: var(--accent); letter-spacing: 0.03em; }
+
+    #conn-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      border: 1px solid;
+      transition: background 0.3s, color 0.3s;
+    }
+    #conn-pill.online  { background: var(--green-dim);  color: #b9f6ca; border-color: var(--green); }
+    #conn-pill.offline { background: var(--red-dim);    color: #ff8a80; border-color: var(--red); }
+    #conn-pill.unknown { background: var(--bg3);        color: var(--text-dim); border-color: var(--border); }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+    #conn-pill.online .dot  { animation: none; }
+    #conn-pill.offline .dot { animation: none; }
+
     #status-bar {
-      font-size: 0.78rem;
-      color: var(--text-dim);
       display: flex;
       align-items: center;
       gap: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--text-dim);
     }
     #refresh-btn {
       background: var(--bg3);
@@ -58,18 +88,36 @@
     }
     #refresh-btn:hover { background: var(--bg2); }
 
+    /* ── Sections ─────────────────────────────────── */
     section { margin-bottom: 2rem; }
-    section h2 {
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       margin-bottom: 0.75rem;
       padding-bottom: 0.35rem;
       border-bottom: 1px solid var(--border);
     }
+    .section-header h2 {
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .filter-input {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      width: 180px;
+    }
+    .filter-input::placeholder { color: var(--text-dim); }
+    .filter-input:focus { outline: 1px solid var(--accent); }
 
-    /* Areas grid */
+    /* ── Areas Grid ───────────────────────────────── */
     .areas-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -81,11 +129,12 @@
       border-radius: 8px;
       padding: 0.85rem 1rem;
     }
-    .area-card .area-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.4rem; }
-    .area-card .area-siid { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.6rem; }
-    .area-card .area-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .area-card.armed-card  { border-color: var(--red); }
+    .area-card .area-name  { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .area-card .area-siid  { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.6rem; }
+    .area-card .area-btns  { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.6rem; }
 
-    /* Tables */
+    /* ── Tables ───────────────────────────────────── */
     .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; background: var(--bg2); }
     thead th {
@@ -100,33 +149,11 @@
     }
     tbody tr { border-top: 1px solid var(--border); }
     tbody tr:hover { background: var(--bg3); }
-    td { padding: 0.5rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
+    td { padding: 0.45rem 0.75rem; font-size: 0.85rem; vertical-align: middle; }
     .item-name { font-weight: 500; }
     .item-siid { font-size: 0.7rem; color: var(--text-dim); margin-top: 1px; }
 
-    /* Filter */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.35rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .section-header h2 { border: none; margin: 0; padding: 0; }
-    .filter-input {
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: 4px;
-      padding: 3px 10px;
-      font-size: 0.8rem;
-      width: 180px;
-    }
-    .filter-input::placeholder { color: var(--text-dim); }
-    .filter-input:focus { outline: 1px solid var(--accent); }
-
-    /* Badges */
+    /* ── Badges ───────────────────────────────────── */
     .badge {
       display: inline-block;
       padding: 2px 9px;
@@ -136,16 +163,17 @@
       letter-spacing: 0.04em;
       white-space: nowrap;
     }
-    .badge-armed    { background: var(--red-dim);    color: #ff8a80; border: 1px solid var(--red); }
-    .badge-disarmed { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
-    .badge-frei     { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
-    .badge-ausgeloest { background: var(--red-dim);  color: #ff8a80; border: 1px solid var(--red); }
-    .badge-gesperrt { background: var(--orange-dim); color: #ffd180; border: 1px solid var(--orange); }
-    .badge-on       { background: var(--blue-dim);   color: #82b1ff; border: 1px solid var(--blue); }
-    .badge-off      { background: #1a1a2e;           color: var(--text-dim); border: 1px solid var(--border); }
+    .badge-armed      { background: var(--red-dim);    color: #ff8a80; border: 1px solid var(--red); }
+    .badge-disarmed   { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
+    .badge-frei       { background: var(--green-dim);  color: #b9f6ca; border: 1px solid var(--green); }
+    .badge-ausgeloest { background: var(--red-dim);    color: #ff8a80; border: 1px solid var(--red); }
+    .badge-gesperrt   { background: var(--orange-dim); color: #ffd180; border: 1px solid var(--orange); }
+    .badge-on         { background: var(--blue-dim);   color: #82b1ff; border: 1px solid var(--blue); }
+    .badge-off        { background: #1a1a2e;           color: var(--text-dim); border: 1px solid var(--border); }
 
-    /* Buttons */
+    /* ── Buttons ──────────────────────────────────── */
     button.btn {
+      /* type="button" is set on all buttons to avoid accidental form submission */
       cursor: pointer;
       border: 1px solid transparent;
       border-radius: 4px;
@@ -154,45 +182,67 @@
       font-weight: 500;
       white-space: nowrap;
     }
-    button.btn:hover { opacity: 0.85; }
+    button.btn:hover  { opacity: 0.85; }
     button.btn:active { opacity: 0.7; }
-    .btn-arm     { background: var(--red);    color: #fff; }
-    .btn-disarm  { background: var(--green);  color: #fff; }
+    button.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn-arm        { background: var(--red);    color: #fff; }
+    .btn-disarm     { background: var(--green);  color: #fff; }
+    .btn-reset      { background: #6a1b9a;       color: #fff; }
+    .btn-silence    { background: #37474f;        color: #fff; }
     .btn-sperren    { background: var(--orange); color: #fff; }
     .btn-entsperren { background: var(--blue);   color: #fff; }
     .btn-on  { background: var(--blue);  color: #fff; }
     .btn-off { background: var(--grey);  color: #fff; }
     .btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
 
-    /* Loading / error states */
-    .loading { color: var(--text-dim); font-style: italic; font-size: 0.85rem; padding: 0.75rem 0; }
-    .error-msg { color: #ff8a80; font-size: 0.85rem; padding: 0.5rem; }
-    .empty { color: var(--text-dim); font-size: 0.85rem; padding: 0.5rem; }
+    /* ── Misc ─────────────────────────────────────── */
+    .loading  { color: var(--text-dim); font-style: italic; font-size: 0.85rem; padding: 0.75rem; }
+    .error-td { color: #ff8a80; font-size: 0.85rem; padding: 0.5rem; }
+    .empty    { color: var(--text-dim); font-size: 0.85rem; padding: 0.5rem; }
+    #error-banner {
+      display: none;
+      background: var(--red-dim);
+      border: 1px solid var(--red);
+      color: #ff8a80;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>&#x1F6E1; MAP5000 Dashboard</h1>
+  <div class="header-left">
+    <h1>&#x1F6E1; MAP5000 Dashboard</h1>
+    <span id="conn-pill" class="unknown">
+      <span class="dot"></span>
+      <span id="conn-label">Verbinde…</span>
+    </span>
+  </div>
   <div id="status-bar">
     <span id="last-update">Lade…</span>
-    <button id="refresh-btn" onclick="loadStatus()">&#x21bb; Aktualisieren</button>
+    <button type="button" id="refresh-btn" onclick="loadStatus()">&#x21bb; Aktualisieren</button>
   </div>
 </header>
 
+<div id="error-banner"></div>
+
 <!-- BEREICHE -->
-<section id="sec-areas">
-  <h2>Bereiche</h2>
+<section>
+  <div class="section-header"><h2>Bereiche</h2></div>
   <div id="areas-grid" class="areas-grid">
     <div class="loading">Lade…</div>
   </div>
 </section>
 
 <!-- MELDER -->
-<section id="sec-points">
+<section>
   <div class="section-header">
-    <h2 style="font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim)">Melder</h2>
-    <input class="filter-input" id="filter-points" placeholder="Suche…" oninput="filterTable('points-body', this.value)">
+    <h2>Melder</h2>
+    <input class="filter-input" id="filter-points" placeholder="Suche Melder…"
+           oninput="filterTable('points-body', this.value)">
   </div>
   <div class="table-wrap">
     <table>
@@ -202,7 +252,7 @@
           <th>Status</th>
           <th>Aktiv</th>
           <th>Gesperrt</th>
-          <th>Aktionen</th>
+          <th>Aktion</th>
         </tr>
       </thead>
       <tbody id="points-body">
@@ -213,10 +263,11 @@
 </section>
 
 <!-- AUSGÄNGE -->
-<section id="sec-outputs">
+<section>
   <div class="section-header">
-    <h2 style="font-size:0.9rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim)">Ausgänge</h2>
-    <input class="filter-input" id="filter-outputs" placeholder="Suche…" oninput="filterTable('outputs-body', this.value)">
+    <h2>Ausgänge</h2>
+    <input class="filter-input" id="filter-outputs" placeholder="Suche Ausgang…"
+           oninput="filterTable('outputs-body', this.value)">
   </div>
   <div class="table-wrap">
     <table>
@@ -225,7 +276,7 @@
           <th>Name / SIID</th>
           <th>Ein/Aus</th>
           <th>Gesperrt</th>
-          <th>Aktionen</th>
+          <th>Aktion</th>
         </tr>
       </thead>
       <tbody id="outputs-body">
@@ -237,26 +288,47 @@
 
 <script>
   const REFRESH_MS = 10000;
-  let refreshTimer = null;
+  let refreshTimer  = null;
+  let cmdInFlight   = false;
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  function siid(item) {
-    return (item["@self"] || "").replace(/^\//, "");
-  }
-  function label(item) {
-    return item.name || siid(item) || "—";
-  }
+  function siid(item)  { return (item["@self"] || "").replace(/^\//, ""); }
+  function label(item) { return item.name || siid(item) || "—"; }
+
   function esc(s) {
     return String(s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
-  function escAttr(s) {
-    return esc(s).replace(/'/g, "&#39;");
+  function escA(s) { return esc(s).replace(/'/g,"&#39;"); }
+
+  // ── Connectivity Pill ─────────────────────────────────────────────────────────
+  function setConnStatus(state) {
+    // state: "online" | "offline" | "unknown"
+    const pill  = document.getElementById("conn-pill");
+    const lbl   = document.getElementById("conn-label");
+    pill.className = state;
+    if (state === "online")  lbl.textContent = "MAP5000 erreichbar";
+    if (state === "offline") lbl.textContent = "MAP5000 nicht erreichbar";
+    if (state === "unknown") lbl.textContent = "Verbinde…";
   }
 
-  // ── Commands ─────────────────────────────────────────────────────────────────
+  // ── Error Banner ──────────────────────────────────────────────────────────────
+  function showError(msg) {
+    const b = document.getElementById("error-banner");
+    b.style.display = "block";
+    b.textContent   = "⚠ " + msg;
+  }
+  function clearError() {
+    const b = document.getElementById("error-banner");
+    b.style.display = "none";
+    b.textContent   = "";
+  }
+
+  // ── Commands ──────────────────────────────────────────────────────────────────
   async function sendCmd(resource, itemSiid, cmd) {
+    if (cmdInFlight) return;
+    cmdInFlight = true;
     try {
       const r = await fetch("api/cmd", {
         method: "POST",
@@ -265,46 +337,46 @@
       });
       const j = await r.json();
       if (!j.ok) {
-        alert("Fehler: " + (j.error || "Unbekannter Fehler"));
+        showError("Befehl fehlgeschlagen: " + (j.error || "Unbekannter Fehler"));
       } else {
+        clearError();
         scheduleRefresh(1200);
       }
     } catch (e) {
-      alert("Netzwerkfehler: " + e);
+      showError("Netzwerkfehler: " + e);
+    } finally {
+      cmdInFlight = false;
     }
   }
 
   // ── Filter ────────────────────────────────────────────────────────────────────
   function filterTable(tbodyId, query) {
-    const q = query.toLowerCase().trim();
+    const q    = query.toLowerCase().trim();
     const rows = document.getElementById(tbodyId).querySelectorAll("tr[data-search]");
-    rows.forEach(row => {
-      const match = !q || row.dataset.search.includes(q);
-      row.style.display = match ? "" : "none";
-    });
+    rows.forEach(r => { r.style.display = !q || r.dataset.search.includes(q) ? "" : "none"; });
   }
 
   // ── Render Areas ──────────────────────────────────────────────────────────────
   function renderAreas(areas) {
     const grid = document.getElementById("areas-grid");
-    if (!areas.length) {
-      grid.innerHTML = '<div class="empty">Keine Bereiche gefunden.</div>';
-      return;
-    }
+    if (!areas.length) { grid.innerHTML = '<div class="empty">Keine Bereiche gefunden.</div>'; return; }
     grid.innerHTML = areas.map(a => {
-      const s = siid(a);
+      const s     = siid(a);
       const armed = a.armed === true;
       const badge = armed
         ? '<span class="badge badge-armed">&#x1F534; Scharf</span>'
         : '<span class="badge badge-disarmed">&#x1F7E2; Unscharf</span>';
-      const btnArm    = `<button class="btn btn-arm"    onclick="sendCmd('area','${escAttr(s)}','ARM')">Scharf</button>`;
-      const btnDisarm = `<button class="btn btn-disarm" onclick="sendCmd('area','${escAttr(s)}','DISARM')">Unscharf</button>`;
+      const btnArm     = `<button type="button" class="btn btn-arm"     onclick="sendCmd('area','${escA(s)}','ARM')">Scharf</button>`;
+      const btnDisarm  = `<button type="button" class="btn btn-disarm"  onclick="sendCmd('area','${escA(s)}','DISARM')">Unscharf</button>`;
+      const btnReset   = `<button type="button" class="btn btn-reset"   onclick="sendCmd('area','${escA(s)}','RESET')">&#x21BA; Rücksetzen</button>`;
+      const btnSilence = `<button type="button" class="btn btn-silence" onclick="sendCmd('area','${escA(s)}','SILENCEALARM')" title="Sirene stumm schalten">&#x1F515; Stille</button>`;
       return `
-        <div class="area-card">
+        <div class="area-card${armed ? ' armed-card' : ''}">
           <div class="area-name">${esc(label(a))}</div>
           <div class="area-siid">${esc(s)}</div>
           ${badge}
-          <div class="area-actions" style="margin-top:0.6rem">${btnArm}${btnDisarm}</div>
+          <div class="area-btns">${btnArm}${btnDisarm}</div>
+          <div class="area-btns" style="margin-top:4px">${btnReset}${btnSilence}</div>
         </div>`;
     }).join("");
   }
@@ -317,31 +389,29 @@
       return;
     }
     tbody.innerHTML = points.map(p => {
-      const s   = siid(p);
-      const lbl = p.status_label || "—";
+      const s       = siid(p);
+      const sl      = p.status_label || "—";
       const active  = p.active === true;
       const sperren = p.sperren === true || p.enabled === false;
 
-      let badgeClass = "badge-frei";
-      let badgeIcon  = "&#x1F7E2;";
-      if (lbl === "Ausgelöst") { badgeClass = "badge-ausgeloest"; badgeIcon = "&#x1F534;"; }
-      if (lbl === "Gesperrt")  { badgeClass = "badge-gesperrt";   badgeIcon = "&#x1F7E0;"; }
+      let badgeClass = "badge-frei", badgeIcon = "&#x1F7E2;";
+      if (sl === "Ausgelöst") { badgeClass = "badge-ausgeloest"; badgeIcon = "&#x1F534;"; }
+      if (sl === "Gesperrt")  { badgeClass = "badge-gesperrt";   badgeIcon = "&#x1F7E0;"; }
 
-      const statusBadge  = `<span class="badge ${badgeClass}">${badgeIcon} ${esc(lbl)}</span>`;
+      const statusBadge  = `<span class="badge ${badgeClass}">${badgeIcon} ${esc(sl)}</span>`;
       const activeBadge  = active
-        ? '<span class="badge badge-ausgeloest">Ausgelöst</span>'
+        ? '<span class="badge badge-ausgeloest">Auslösung</span>'
         : '<span class="badge badge-off">Ruhend</span>';
       const sperrenBadge = sperren
         ? '<span class="badge badge-gesperrt">Gesperrt</span>'
         : '<span class="badge badge-frei">Aktiv</span>';
-
       const btnSperren = sperren
-        ? `<button class="btn btn-entsperren" onclick="sendCmd('point','${escAttr(s)}','ENABLE')">Entsperren</button>`
-        : `<button class="btn btn-sperren"    onclick="sendCmd('point','${escAttr(s)}','DISABLE')">Sperren</button>`;
+        ? `<button type="button" class="btn btn-entsperren" onclick="sendCmd('point','${escA(s)}','ENABLE')">Entsperren</button>`
+        : `<button type="button" class="btn btn-sperren"    onclick="sendCmd('point','${escA(s)}','DISABLE')">Sperren</button>`;
 
-      const searchKey = `${label(p)} ${s} ${lbl}`.toLowerCase();
+      const searchKey = `${label(p)} ${s} ${sl}`.toLowerCase();
       return `
-        <tr data-search="${escAttr(searchKey)}">
+        <tr data-search="${escA(searchKey)}">
           <td><div class="item-name">${esc(label(p))}</div><div class="item-siid">${esc(s)}</div></td>
           <td>${statusBadge}</td>
           <td>${activeBadge}</td>
@@ -349,6 +419,8 @@
           <td><div class="btn-group">${btnSperren}</div></td>
         </tr>`;
     }).join("");
+    const q = document.getElementById("filter-points").value;
+    if (q) filterTable("points-body", q);
   }
 
   // ── Render Outputs ────────────────────────────────────────────────────────────
@@ -370,23 +442,21 @@
         ? '<span class="badge badge-gesperrt">Gesperrt</span>'
         : '<span class="badge badge-frei">Aktiv</span>';
 
-      const btnOn  = `<button class="btn btn-on"  onclick="sendCmd('output','${escAttr(s)}','ON')">EIN</button>`;
-      const btnOff = `<button class="btn btn-off" onclick="sendCmd('output','${escAttr(s)}','OFF')">AUS</button>`;
+      const btnOn  = `<button type="button" class="btn btn-on"  onclick="sendCmd('output','${escA(s)}','ON')">EIN</button>`;
+      const btnOff = `<button type="button" class="btn btn-off" onclick="sendCmd('output','${escA(s)}','OFF')">AUS</button>`;
       const btnSp  = sperren
-        ? `<button class="btn btn-entsperren" onclick="sendCmd('output','${escAttr(s)}','ENABLE')">Entsperren</button>`
-        : `<button class="btn btn-sperren"    onclick="sendCmd('output','${escAttr(s)}','DISABLE')">Sperren</button>`;
+        ? `<button type="button" class="btn btn-entsperren" onclick="sendCmd('output','${escA(s)}','ENABLE')">Entsperren</button>`
+        : `<button type="button" class="btn btn-sperren"    onclick="sendCmd('output','${escA(s)}','DISABLE')">Sperren</button>`;
 
       const searchKey = `${label(o)} ${s}`.toLowerCase();
       return `
-        <tr data-search="${escAttr(searchKey)}">
+        <tr data-search="${escA(searchKey)}">
           <td><div class="item-name">${esc(label(o))}</div><div class="item-siid">${esc(s)}</div></td>
           <td>${onBadge} <div class="btn-group" style="margin-top:4px">${btnOn}${btnOff}</div></td>
           <td>${spBadge}</td>
           <td><div class="btn-group">${btnSp}</div></td>
         </tr>`;
     }).join("");
-
-    // Re-apply active filter after re-render
     const q = document.getElementById("filter-outputs").value;
     if (q) filterTable("outputs-body", q);
   }
@@ -394,26 +464,32 @@
   // ── Load Status ───────────────────────────────────────────────────────────────
   async function loadStatus() {
     if (refreshTimer) clearTimeout(refreshTimer);
-    document.getElementById("last-update").textContent = "Aktualisiere…";
+
     try {
       const r = await fetch("api/status");
-      if (!r.ok) throw new Error("HTTP " + r.status);
       const d = await r.json();
 
-      renderAreas(d.areas   || []);
-      renderPoints(d.points  || []);
-      renderOutputs(d.outputs || []);
-
-      document.getElementById("last-update").textContent =
-        "Aktualisiert: " + new Date().toLocaleTimeString("de-DE");
-
-      // Re-apply point filter after render
-      const qp = document.getElementById("filter-points").value;
-      if (qp) filterTable("points-body", qp);
+      if (d.map_online === false) {
+        setConnStatus("offline");
+        showError("MAP5000 nicht erreichbar" + (d.error ? ": " + d.error : ""));
+        document.getElementById("last-update").textContent =
+          "Fehler: " + new Date().toLocaleTimeString("de-DE");
+      } else {
+        setConnStatus("online");
+        clearError();
+        renderAreas(d.areas   || []);
+        renderPoints(d.points  || []);
+        renderOutputs(d.outputs || []);
+        document.getElementById("last-update").textContent =
+          "Aktualisiert: " + new Date().toLocaleTimeString("de-DE");
+      }
     } catch (e) {
-      document.getElementById("last-update").innerHTML =
-        `<span style="color:#ff8a80">Fehler: ${esc(String(e))}</span>`;
+      setConnStatus("offline");
+      showError("Verbindungsfehler zum Dashboard: " + e);
+      document.getElementById("last-update").textContent =
+        "Fehler: " + new Date().toLocaleTimeString("de-DE");
     }
+
     refreshTimer = setTimeout(loadStatus, REFRESH_MS);
   }
 
@@ -422,7 +498,6 @@
     refreshTimer = setTimeout(loadStatus, delay);
   }
 
-  // Initial load
   loadStatus();
 </script>
 </body>

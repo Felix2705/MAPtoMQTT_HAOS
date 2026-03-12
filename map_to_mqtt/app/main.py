@@ -23,7 +23,7 @@ from .map_client import MapClient
 from .mapping import CommandParser, MapEventMapper
 from .mqtt_client import MqttService
 from .translation import load_translation_map, normalize_siid, topicize_name
-from .web_ui import start_web_ui
+from .web_ui import set_map_online, start_web_ui
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +51,69 @@ def _enrich(items: list, translation_map: dict) -> list:
             item["name"] = entry.get("name", "")
         result.append(item)
     return result
+
+
+class MapHealthMonitor:
+    """Periodically pings the MAP5000 and publishes reachability to MQTT + Web UI."""
+
+    def __init__(
+        self,
+        map_client: MapClient,
+        mqtt: MqttService,
+        discovery: MqttDiscovery,
+        state_base: str,
+        interval: int = 30,
+    ) -> None:
+        self._map = map_client
+        self._mqtt = mqtt
+        self._discovery = discovery
+        self._topic = f"{state_base.strip('/')}/bridge/map_online"
+        self._interval = max(10, interval)
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+        self._last_online: Optional[bool] = None
+
+    def start(self) -> None:
+        self._running = True
+        self._thread = threading.Thread(target=self._loop, daemon=True, name="MapHealthMonitor")
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=5)
+            self._thread = None
+
+    def _loop(self) -> None:
+        # Initial check immediately on start
+        self._check()
+        deadline = time.monotonic() + self._interval
+        while self._running:
+            time.sleep(1)
+            if time.monotonic() >= deadline:
+                self._check()
+                deadline = time.monotonic() + self._interval
+
+    def _check(self) -> None:
+        try:
+            self._map.get_panel()
+            online = True
+        except Exception:
+            online = False
+
+        # Publish to MQTT (retained) on every check so retained value stays fresh
+        self._mqtt.publish(self._topic, {"value": online}, retain=True)
+
+        # Sync to Web UI
+        set_map_online(online)
+
+        # Log only when state changes
+        if online != self._last_online:
+            if online:
+                logger.info("MAP5000 is reachable")
+            else:
+                logger.warning("MAP5000 is NOT reachable – ping failed")
+            self._last_online = online
 
 
 def _compute_status_label(item: dict) -> str:
@@ -90,6 +153,7 @@ class StatePusher:
         self._interval: int = max(10, int(opts.get("state_refresh_interval", 60)))
         self._running = False
         self._thread: Optional[threading.Thread] = None
+        self._trigger_event = threading.Event()
 
     def start(self) -> None:
         self._running = True
@@ -98,9 +162,14 @@ class StatePusher:
 
     def stop(self) -> None:
         self._running = False
+        self._trigger_event.set()   # unblock wait
         if self._thread:
             self._thread.join(timeout=5)
             self._thread = None
+
+    def trigger_refresh(self) -> None:
+        """Request an immediate state refresh (called after events or commands)."""
+        self._trigger_event.set()
 
     def _loop(self) -> None:
         time.sleep(2)
@@ -109,9 +178,9 @@ class StatePusher:
                 self._refresh()
             except Exception:
                 logger.exception("State refresh error")
-            deadline = time.monotonic() + self._interval
-            while self._running and time.monotonic() < deadline:
-                time.sleep(1)
+            # Wait for scheduled interval OR explicit trigger — whichever comes first
+            self._trigger_event.wait(timeout=self._interval)
+            self._trigger_event.clear()
 
     def _refresh(self) -> None:
         logger.info("Refreshing MAP state")
@@ -195,8 +264,9 @@ def main() -> None:
     logger.info("MAP to MQTT Addon starting")
 
     opts = load_options()
-    logger.info("Options: map=%s  mqtt=%s:%s",
-                opts.get("map_base_url"), opts.get("mqtt_host"), opts.get("mqtt_port"))
+    mode = opts.get("bridge_mode", "mqtt")   # mqtt | integration | both
+    logger.info("Options: mode=%s  map=%s  mqtt=%s:%s",
+                mode, opts.get("map_base_url"), opts.get("mqtt_host"), opts.get("mqtt_port"))
 
     # Optional translation table (SIID → Name)
     translation_map: dict = {}
@@ -220,9 +290,19 @@ def main() -> None:
     mqtt_svc = MqttService()
     discovery = MqttDiscovery(mqtt_svc, state_base, cmd_base, availability_topic=availability_topic)
 
-    # Two separate MapClient instances: event long-poll never blocks commands/state-refresh
+    # Three MapClient instances:
+    #  map_client       – state refresh, commands, web UI
+    #  event_map_client – long-poll (never blocked by other requests)
+    #  health_map_client – lightweight ping with short timeout
     map_client = _build_map_client(opts)
     event_map_client = _build_map_client(opts)
+    health_map_client = MapClient(
+        base_url=opts["map_base_url"],
+        username=opts["map_username"],
+        password=opts["map_password"],
+        verify_tls=bool(opts.get("map_verify_tls", False)),
+        timeout_sec=5,
+    )
 
     mapper = MapEventMapper(event_base, translation_map)
     cmd_parser = CommandParser(cmd_base, translation_map, translation_name_map)
@@ -230,9 +310,15 @@ def main() -> None:
     bridge.setup(map_client, mqtt_svc, mapper, cmd_parser)
 
     state_pusher = StatePusher(map_client, mqtt_svc, discovery, opts, translation_map)
+    health_monitor = MapHealthMonitor(health_map_client, mqtt_svc, discovery, state_base)
 
-    # Start Web UI (HA Ingress on port 8080) — uses its own MapClient internally
-    # We pass the same map_client; Web UI calls are user-triggered, not concurrent with long-poll
+    # Events from MAP and sent commands both trigger an immediate MQTT state refresh
+    bridge.set_on_state_change(state_pusher.trigger_refresh)
+
+    # Start Web UI (HA Ingress on port 8080)
+    # Web UI commands also trigger MQTT state refresh so both stay in sync
+    from .web_ui import set_refresh_callback
+    set_refresh_callback(state_pusher.trigger_refresh)
     start_web_ui(map_client, translation_map, port=8080)
 
     stop_event = threading.Event()
@@ -244,6 +330,17 @@ def main() -> None:
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
+    # ── Integration-only mode: REST API + health monitor, no MQTT ────────────
+    if mode == "integration":
+        logger.info("Mode: integration – MQTT disabled, REST API only")
+        health_monitor.start()
+        stop_event.wait()
+        health_monitor.stop()
+        logger.info("MAP to MQTT Addon stopped")
+        return
+
+    # ── MQTT mode (mqtt or both) ──────────────────────────────────────────────
+    logger.info("Mode: %s – MQTT bridge active", mode)
     connected = False
     started = False
 
@@ -276,6 +373,7 @@ def main() -> None:
                 outputs = _enrich(map_client.get_outputs().get("list", []), translation_map)
                 points = _enrich(map_client.get_points().get("list", []), translation_map)
                 discovery.publish_all(areas, points, outputs)
+                discovery.publish_bridge_sensors()
                 discovery.publish_availability(True)
                 logger.info("Discovery done: %d areas, %d outputs, %d points", len(areas), len(outputs), len(points))
             except Exception:
@@ -285,6 +383,7 @@ def main() -> None:
 
             bridge.start_events(_build_sub_payload(), _build_fetch_payload(opts), map_client=event_map_client)
             state_pusher.start()
+            health_monitor.start()
             started = True
             logger.info("Bridge running")
 
@@ -301,6 +400,7 @@ def main() -> None:
             discovery.publish_availability(False)
             bridge.stop_events()
             state_pusher.stop()
+            health_monitor.stop()
             mqtt_svc.disconnect()
             connected = False
             started = False
@@ -310,6 +410,7 @@ def main() -> None:
     discovery.publish_availability(False)
     bridge.stop_events()
     state_pusher.stop()
+    health_monitor.stop()
     mqtt_svc.disconnect()
     logger.info("MAP to MQTT Addon stopped")
 

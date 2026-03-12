@@ -136,6 +136,21 @@ class MqttDiscovery:
             "device": _device(),
         }, retain=True)
 
+    def publish_bridge_sensors(self) -> None:
+        """Publish a binary_sensor that reflects MAP5000 reachability."""
+        uid = "map5000_connectivity"
+        self._mqtt.publish(self._base("binary_sensor", uid), {
+            "name": "MAP5000 Verbindung",
+            "unique_id": uid,
+            "state_topic": f"{self._state_base}/bridge/map_online",
+            "value_template": "{{ 'ON' if value_json.value else 'OFF' }}",
+            "device_class": "connectivity",
+            "availability_topic": self._availability_topic,
+            "device": _device(),
+            "icon": "mdi:lan-connect",
+        }, retain=True)
+        logger.info("Bridge sensor discovery published (MAP connectivity)")
+
     def _publish_output(self, siid: str, name: str) -> None:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/outputs/{siid}"

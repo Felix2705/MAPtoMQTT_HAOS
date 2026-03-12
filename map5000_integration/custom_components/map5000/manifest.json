@@ -1,0 +1,10 @@
+{
+  "domain": "map5000",
+  "name": "MAP5000",
+  "version": "1.0.4",
+  "documentation": "https://github.com/your-repo/ha-map-mqtt-addon",
+  "requirements": [],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "codeowners": []
+}
