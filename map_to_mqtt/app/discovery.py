@@ -105,6 +105,11 @@ class MqttDiscovery:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/points/{siid}"
 
+        # Rauchmelder: Namen die mit "BM_" beginnen (Brandmelder)
+        is_smoke = name.startswith("BM_")
+        bs_device_class = "smoke" if is_smoke else "motion"
+        bs_extra = {"icon": "mdi:fire-circle"} if is_smoke else {}
+
         # binary_sensor: aktiv / nicht aktiv (Ausgelöst/Frei)
         bs_uid = f"map_point_{slug}"
         self._mqtt.publish(self._base("binary_sensor", bs_uid), {
@@ -112,9 +117,10 @@ class MqttDiscovery:
             "unique_id": bs_uid,
             "state_topic": state_topic,
             "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
-            "device_class": "motion",
+            "device_class": bs_device_class,
             "availability_topic": self._availability_topic,
             "device": _device(),
+            **bs_extra,
         }, retain=True)
 
         # sensor: Status-Label (Frei / Ausgelöst / Gesperrt)

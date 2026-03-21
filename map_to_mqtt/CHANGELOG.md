@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.8
+
+- Neu: Melder mit Namen-Präfix `BM_` werden als Rauchmelder registriert (`device_class: smoke`, Icon `mdi:fire-circle`)
+- Status-Sensor und Sperren-Switch bleiben für Rauchmelder unverändert (`mdi:shield-check`)
+
 ## 1.0.7
 
 - Fix: Eckige Klammern in MAP-API-Namen werden automatisch entfernt (`[Ausgang AUX 1]` → `Ausgang AUX 1`)
