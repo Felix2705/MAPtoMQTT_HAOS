@@ -66,6 +66,11 @@ def _enrich(items: list, translation_map: dict) -> list:
         api_name = _clean_name(item.get("name", ""))
         chosen = translation_name or api_name
 
+        logger.info(
+            "enrich: @self=%r  siid_full=%r  siid_short=%r  hit=%s  api_name=%r  translation=%r  chosen=%r",
+            self_val, siid_full, siid_short, entry is not None, api_name, translation_name, chosen,
+        )
+
         if chosen and chosen != item.get("name", ""):
             item = dict(item)
             item["name"] = chosen
