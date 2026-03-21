@@ -1,0 +1,67 @@
+name: "MAP to MQTT"
+description: "Bridges Bosch MAP5000 REST-API events to MQTT and accepts MQTT commands to control areas, outputs and points."
+version: "1.0.11"
+slug: "map_to_mqtt"
+init: false
+homeassistant_api: false
+hassio_api: false
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:shield-home
+panel_title: MAP5000
+ports:
+  8080/tcp: 8080
+
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+
+map:
+  - config:rw
+
+options:
+  bridge_mode: "mqtt"
+  map_base_url: "https://169.254.10.10"
+  map_username: ""
+  map_password: ""
+  map_verify_tls: false
+  map_request_timeout: 20
+  mqtt_host: "core-mosquitto"
+  mqtt_port: 1883
+  mqtt_username: ""
+  mqtt_password: ""
+  mqtt_use_tls: false
+  event_topic_base: "map/events"
+  cmd_topic_base: "map/cmd"
+  state_topic_base: "map/state"
+  poll_max_events: 100
+  poll_min_events: 1
+  poll_max_time: 50
+  state_refresh_interval: 60
+  health_check_interval: 30
+  translation_xml_path: ""
+
+schema:
+  bridge_mode: list(mqtt|integration|both)
+  map_base_url: str
+  map_username: str
+  map_password: str
+  map_verify_tls: bool
+  map_request_timeout: int
+  mqtt_host: str
+  mqtt_port: int
+  mqtt_username: str
+  mqtt_password: str
+  mqtt_use_tls: bool
+  event_topic_base: str
+  cmd_topic_base: str
+  state_topic_base: str
+  poll_max_events: int
+  poll_min_events: int
+  poll_max_time: int
+  state_refresh_interval: int
+  health_check_interval: int
+  translation_xml_path: str
