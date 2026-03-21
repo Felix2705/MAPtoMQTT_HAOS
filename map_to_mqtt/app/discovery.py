@@ -105,25 +105,28 @@ class MqttDiscovery:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/points/{siid}"
 
-        # Rauchmelder: Namen die mit "BM_" beginnen (Brandmelder)
-        is_smoke = name.startswith("BM_")
-        bs_device_class = "smoke" if is_smoke else "motion"
-        bs_extra = {"icon": "mdi:fire-circle"} if is_smoke else {}
+        # Brandmelder: Namen die mit "BM_" beginnen (case-insensitiv)
+        is_smoke = name.upper().startswith("BM_")
+        logger.debug("Point %s name=%r is_smoke=%s", siid, name, is_smoke)
 
-        # binary_sensor: aktiv / nicht aktiv (Ausgelöst/Frei)
+        # binary_sensor: aktiv / nicht aktiv
+        # Wichtig: bei device_class überschreibt HA das icon-Feld im Card-View.
+        # Daher setzen wir device_class: smoke für die Funktionalität UND
+        # icon explizit – HA respektiert icon aus der Discovery als Entity-Icon.
         bs_uid = f"map_point_{slug}"
-        self._mqtt.publish(self._base("binary_sensor", bs_uid), {
+        bs_config = {
             "name": f"{name} (Eingeschaltet)",
             "unique_id": bs_uid,
             "state_topic": state_topic,
             "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
-            "device_class": bs_device_class,
+            "device_class": "smoke" if is_smoke else "motion",
+            "icon": "mdi:fire-circle" if is_smoke else "mdi:motion-sensor",
             "availability_topic": self._availability_topic,
             "device": _device(),
-            **bs_extra,
-        }, retain=True)
+        }
+        self._mqtt.publish(self._base("binary_sensor", bs_uid), bs_config, retain=True)
 
-        # sensor: Status-Label (Frei / Ausgelöst / Gesperrt)
+        # sensor: Status-Label (Frei / Ausgelöst / Gesperrt) – icon bleibt immer shield-check
         lbl_uid = f"map_point_{slug}_status_label"
         self._mqtt.publish(self._base("sensor", lbl_uid), {
             "name": f"{name} (Status)",

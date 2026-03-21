@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.9
+
+- Fix: Icon-Zuweisung für BM_-Melder – `icon` wird jetzt explizit im Discovery-Payload gesetzt (nicht via dict-Unpacking)
+- Fix: BM_-Erkennung jetzt case-insensitiv (`bm_`, `BM_`, `Bm_` werden alle erkannt)
+- Fix: Normale Melder erhalten explizit `mdi:motion-sensor` statt keinen Icon
+- Debug-Log: `is_smoke`-Erkennung wird pro Melder geloggt zur Diagnose
+
 ## 1.0.8
 
 - Neu: Melder mit Namen-Präfix `BM_` werden als Rauchmelder registriert (`device_class: smoke`, Icon `mdi:fire-circle`)
