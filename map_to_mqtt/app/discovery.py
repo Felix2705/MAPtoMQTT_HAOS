@@ -105,9 +105,10 @@ class MqttDiscovery:
         slug = _slug(siid)
         state_topic = f"{self._state_base}/points/{siid}"
 
-        # Brandmelder: Namen die mit "BM_" beginnen (case-insensitiv)
-        is_smoke = name.upper().startswith("BM_")
-        logger.debug("Point %s name=%r is_smoke=%s", siid, name, is_smoke)
+        # Brandmelder: Name ODER letztes SIID-Segment beginnt mit "BM_" (case-insensitiv)
+        siid_tail = siid.rsplit("/", 1)[-1]
+        is_smoke = name.upper().startswith("BM_") or siid_tail.upper().startswith("BM_")
+        logger.info("Point siid=%r siid_tail=%r name=%r is_smoke=%s", siid, siid_tail, name, is_smoke)
 
         # binary_sensor: aktiv / nicht aktiv
         # Wichtig: bei device_class überschreibt HA das icon-Feld im Card-View.

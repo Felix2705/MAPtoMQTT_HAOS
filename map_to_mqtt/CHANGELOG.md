@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.12
+
+- Fix: BM_-Erkennung prüft jetzt Name UND SIID – MAP-API liefert manchmal einen anderen Namen als die SIID selbst
+- Log: is_smoke-Erkennung auf INFO-Level für Diagnose
+
 ## 1.0.11
 
 - BM_-Melder werden als echter Rauchmelder registriert (`device_class: smoke`) – HA zeigt „Rauch erkannt/Kein Rauch", Sicherheits-Kategorie und Alarmsystem-Integration
