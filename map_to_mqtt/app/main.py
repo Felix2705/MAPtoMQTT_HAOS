@@ -40,13 +40,19 @@ def load_options() -> dict:
         return json.load(f)
 
 
-def _enrich(items: list, translation_map: dict) -> list:
-    """Add 'name' field from translation map to each item.
+def _clean_name(name: str) -> str:
+    """Strip brackets and surrounding whitespace that the MAP API wraps around some names."""
+    return name.strip().strip("[]").strip()
 
-    The MAP API returns @self as a full path (e.g. 'areas/1.1') while the
-    XML config export uses only the numeric SIID ('1.1'). Both forms are
-    tried so that translation works regardless of API path prefix.
-    Translation always wins over an empty or missing API-provided name.
+
+def _enrich(items: list, translation_map: dict) -> list:
+    """Resolve display names for each item.
+
+    Priority: translation map > cleaned API name.
+    The MAP API sometimes wraps names in square brackets (e.g. '[Ausgang AUX 1]')
+    – these are always stripped. The XML config export uses only the numeric SIID
+    while the API @self field may include a resource prefix ('areas/1.1'), so both
+    forms are tried against the translation map.
     """
     result = []
     for item in items:
@@ -55,11 +61,15 @@ def _enrich(items: list, translation_map: dict) -> list:
         # Also try just the last path segment: "areas/1.1" -> "1.1"
         siid_short = normalize_siid(self_val.split("/")[-1]) if "/" in self_val else siid_full
         entry = translation_map.get(siid_full) or translation_map.get(siid_short)
-        if entry:
-            api_name = item.get("name", "")
-            if not api_name:  # translation wins when API name is absent or empty
-                item = dict(item)
-                item["name"] = entry.get("name", "")
+
+        translation_name = _clean_name(entry.get("name", "")) if entry else ""
+        api_name = _clean_name(item.get("name", ""))
+        chosen = translation_name or api_name
+
+        if chosen and chosen != item.get("name", ""):
+            item = dict(item)
+            item["name"] = chosen
+
         result.append(item)
     return result
 

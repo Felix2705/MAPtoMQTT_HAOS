@@ -52,21 +52,28 @@ class MqttDiscovery:
     def publish_availability(self, online: bool) -> None:
         self._mqtt.publish_raw(self._availability_topic, "online" if online else "offline", retain=True)
 
+    @staticmethod
+    def _display_name(name: str, siid: str) -> str:
+        """Return name if set, otherwise the last segment of the SIID path."""
+        if name:
+            return name
+        return siid.rsplit("/", 1)[-1]
+
     def publish_all(self, areas: list, points: list, outputs: list) -> None:
         for item in areas:
             siid = str(item.get("@self", "")).lstrip("/")
             if siid:
-                self._publish_area(siid, item.get("name", siid))
+                self._publish_area(siid, self._display_name(item.get("name", ""), siid))
 
         for item in points:
             siid = str(item.get("@self", "")).lstrip("/")
             if siid:
-                self._publish_point(siid, item.get("name", siid))
+                self._publish_point(siid, self._display_name(item.get("name", ""), siid))
 
         for item in outputs:
             siid = str(item.get("@self", "")).lstrip("/")
             if siid:
-                self._publish_output(siid, item.get("name", siid))
+                self._publish_output(siid, self._display_name(item.get("name", ""), siid))
 
         logger.info(
             "MQTT Discovery published: %d areas, %d points, %d outputs",

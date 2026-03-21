@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.7
+
+- Fix: Eckige Klammern in MAP-API-Namen werden automatisch entfernt (`[Ausgang AUX 1]` → `Ausgang AUX 1`)
+- Fix: Translation-Map hat immer Vorrang vor dem API-Namen (nicht nur wenn API-Name leer ist)
+- Fix: Fallback-Anzeige wenn kein Name vorhanden: letztes SIID-Segment statt vollem Pfad (`1.1.Area.2.2` statt `areas/1.1.Area.2.2`)
+
 ## 1.0.6
 
 - Fix: MQTT `disconnect()` Reihenfolge korrigiert (disconnect vor loop_stop) – LWT feuerte fälschlicherweise bei jedem Reconnect und graut alle Entities aus
