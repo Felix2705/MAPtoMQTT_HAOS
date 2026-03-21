@@ -41,14 +41,25 @@ def load_options() -> dict:
 
 
 def _enrich(items: list, translation_map: dict) -> list:
-    """Add 'name' field from translation map to each item."""
+    """Add 'name' field from translation map to each item.
+
+    The MAP API returns @self as a full path (e.g. 'areas/1.1') while the
+    XML config export uses only the numeric SIID ('1.1'). Both forms are
+    tried so that translation works regardless of API path prefix.
+    Translation always wins over an empty or missing API-provided name.
+    """
     result = []
     for item in items:
-        siid = normalize_siid(str(item.get("@self", "")).lstrip("/"))
-        entry = translation_map.get(siid)
-        if entry and "name" not in item:
-            item = dict(item)
-            item["name"] = entry.get("name", "")
+        self_val = str(item.get("@self", "")).lstrip("/")
+        siid_full = normalize_siid(self_val)
+        # Also try just the last path segment: "areas/1.1" -> "1.1"
+        siid_short = normalize_siid(self_val.split("/")[-1]) if "/" in self_val else siid_full
+        entry = translation_map.get(siid_full) or translation_map.get(siid_short)
+        if entry:
+            api_name = item.get("name", "")
+            if not api_name:  # translation wins when API name is absent or empty
+                item = dict(item)
+                item["name"] = entry.get("name", "")
         result.append(item)
     return result
 
@@ -313,7 +324,10 @@ def main() -> None:
     bridge.setup(map_client, mqtt_svc, mapper, cmd_parser)
 
     state_pusher = StatePusher(map_client, mqtt_svc, discovery, opts, translation_map)
-    health_monitor = MapHealthMonitor(health_map_client, mqtt_svc, discovery, state_base)
+    health_monitor = MapHealthMonitor(
+        health_map_client, mqtt_svc, discovery, state_base,
+        interval=int(opts.get("health_check_interval", 30)),
+    )
 
     # Events from MAP and sent commands both trigger an immediate MQTT state refresh
     bridge.set_on_state_change(state_pusher.trigger_refresh)

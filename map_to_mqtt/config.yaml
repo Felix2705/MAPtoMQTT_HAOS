@@ -1,6 +1,6 @@
 name: "MAP to MQTT"
 description: "Bridges Bosch MAP5000 REST-API events to MQTT and accepts MQTT commands to control areas, outputs and points."
-version: "1.0.5"
+version: "1.0.6"
 slug: "map_to_mqtt"
 init: false
 homeassistant_api: false
@@ -41,6 +41,7 @@ options:
   poll_min_events: 1
   poll_max_time: 50
   state_refresh_interval: 60
+  health_check_interval: 30
   translation_xml_path: ""
 
 schema:
@@ -62,4 +63,5 @@ schema:
   poll_min_events: int
   poll_max_time: int
   state_refresh_interval: int
+  health_check_interval: int
   translation_xml_path: str
