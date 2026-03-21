@@ -120,7 +120,6 @@ class MqttDiscovery:
             "state_topic": state_topic,
             "value_template": "{{ 'ON' if value_json.active else 'OFF' }}",
             "device_class": "smoke" if is_smoke else "motion",
-            "icon": "mdi:fire-circle" if is_smoke else "mdi:motion-sensor",
             "availability_topic": self._availability_topic,
             "device": _device(),
         }

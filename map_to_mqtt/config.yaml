@@ -1,6 +1,6 @@
 name: "MAP to MQTT"
 description: "Bridges Bosch MAP5000 REST-API events to MQTT and accepts MQTT commands to control areas, outputs and points."
-version: "1.0.9"
+version: "1.0.11"
 slug: "map_to_mqtt"
 init: false
 homeassistant_api: false

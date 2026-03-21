@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.11
+
+- BM_-Melder werden als echter Rauchmelder registriert (`device_class: smoke`) – HA zeigt „Rauch erkannt/Kein Rauch", Sicherheits-Kategorie und Alarmsystem-Integration
+
 ## 1.0.9
 
 - Fix: Icon-Zuweisung für BM_-Melder – `icon` wird jetzt explizit im Discovery-Payload gesetzt (nicht via dict-Unpacking)
