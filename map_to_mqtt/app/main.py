@@ -190,6 +190,9 @@ class StatePusher:
 
         # Republish discovery so HA entities survive a HA restart
         self._discovery.publish_all(areas, points, outputs)
+        self._discovery.publish_bridge_sensors()
+        # Re-confirm availability on every refresh so a missed "online" is recovered automatically
+        self._discovery.publish_availability(True)
 
         self._publish_category("areas", areas)
         self._publish_category("outputs", outputs)

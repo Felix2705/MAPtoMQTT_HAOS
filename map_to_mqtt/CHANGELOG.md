@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.5
+
+- Fix: MQTT `disconnect()` Reihenfolge korrigiert (disconnect vor loop_stop) – LWT feuerte fälschlicherweise bei jedem Reconnect und graut alle Entities aus
+- Fix: `publish_availability(True)` wird jetzt bei jedem State-Refresh (alle 60s) erneut gesendet – Entities erholen sich automatisch nach verlorener Verbindung
+- Fix: `publish_bridge_sensors()` wird beim State-Refresh mitveröffentlicht – MAP5000-Verbindungsentität überlebt HA-Neustarts zuverlässig
+
 ## 1.0.4
 
 - Neu: MapHealthMonitor – dauerhafter Ping zur MAP5000, publiziert `map/state/bridge/map_online` (retained)

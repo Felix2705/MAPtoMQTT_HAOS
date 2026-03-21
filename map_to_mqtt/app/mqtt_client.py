@@ -48,8 +48,8 @@ class MqttService:
         if self._client is None:
             return
         logger.debug("MQTT disconnecting")
-        self._client.loop_stop()
         self._client.disconnect()
+        self._client.loop_stop()
         self._client = None
         self._connected = False
 
